@@ -37,7 +37,7 @@ pub struct InitConfig<'info> {
 }
 
 impl InitConfig<'_> {
-    pub fn init_config(&mut self, points_per_stake: u32, freeze_period: u8, bumps: &InitConfigBumps) -> Result<()> {
+    pub fn init_config(&mut self, points_per_stake: u32, freeze_period: u8,burn_rewards:u32, bumps: &InitConfigBumps) -> Result<()> {
         // Validate collection account
         let base_collection = BaseCollectionV1::try_from(&self.collection.to_account_info())?;
         require!(base_collection.update_authority == self.update_authority.key(), StakingError::InvalidAuthority);
@@ -45,6 +45,7 @@ impl InitConfig<'_> {
         self.config.set_inner(Config {
             points_per_stake, 
             freeze_period, 
+            burn_rewards,
             rewards_bump: bumps.rewards_mint, 
             config_bump: bumps.config });
         Ok(())
