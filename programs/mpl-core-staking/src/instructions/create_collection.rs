@@ -1,16 +1,29 @@
 use anchor_lang::prelude::*;
 use mpl_core::{
-    instructions::{CreateCollectionV2CpiBuilder},
-    types::{Attribute, Attributes, Plugin, PluginAuthority, PluginAuthorityPair},
+    instructions::CreateCollectionV2CpiBuilder,
+    types::{
+        Attribute, Attributes, ExternalCheckResult, ExternalPluginAdapterInitInfo,
+        HookableLifecycleEvent, OracleInitInfo, Plugin, PluginAuthority, PluginAuthorityPair,
+        ValidationResultsOffset,
+    },
     ID as MPL_CORE_ID,
 };
+
+use crate::state::Oracle as OracleAccount;
 
 #[derive(Accounts)]
 pub struct CreateCollection<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"oracle",collection.key().as_ref()],
+        bump = oracle.bump,
+    )]
+    pub oracle: Account<'info, OracleAccount>,
+    /// CHECK: Collection account will be checked by the mpl core program
     #[account(mut)]
-    pub collection: Signer<'info>,
+    pub collection: UncheckedAccount<'info>,
     /// CHECK: PDA update authority
     #[account(
     seeds= [b"update_authority",collection.key().as_ref()],
@@ -62,6 +75,18 @@ impl<'info> CreateCollection<'info> {
                 }),
                 authority: Some(PluginAuthority::UpdateAuthority),
             }])
+            .external_plugin_adapters(vec![ExternalPluginAdapterInitInfo::Oracle(
+                OracleInitInfo {
+                    base_address: self.oracle.key(),
+                    init_plugin_authority: None,
+                    lifecycle_checks: vec![(
+                        HookableLifecycleEvent::Transfer,
+                        ExternalCheckResult { flags: 4 },
+                    )],
+                    base_address_config: None,
+                    results_offset: Some(ValidationResultsOffset::Anchor),
+                },
+            )])
             .invoke_signed(&[signer_seeds])?;
         Ok(())
     }
