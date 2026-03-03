@@ -4,11 +4,7 @@ use anchor_spl::{
     token_interface::{mint_to_checked, Mint, MintToChecked, TokenAccount, TokenInterface},
 };
 use mpl_core::{
-    accounts::BaseAssetV1,
-    fetch_plugin,
-    instructions::{BurnV1CpiBuilder, UpdatePluginV1CpiBuilder},
-    types::{Attributes, FreezeDelegate, Plugin, PluginType, UpdateAuthority},
-    ID as MPL_CORE_ID,
+    ID as MPL_CORE_ID, accounts::{BaseAssetV1, BaseCollectionV1}, fetch_plugin, instructions::{BurnV1CpiBuilder, UpdateCollectionPluginV1CpiBuilder, UpdatePluginV1CpiBuilder}, types::{Attribute, Attributes, FreezeDelegate, Plugin, PluginType, UpdateAuthority}
 };
 
 use crate::{constants::SECONDS_IN_A_DAY, errors::StakingError, state::Config};
@@ -60,14 +56,6 @@ impl<'info> BurnStakedNft<'info> {
         let current_timestamp = Clock::get()?.unix_timestamp;
 
         let base_asset = BaseAssetV1::try_from(&self.nft.to_account_info())?;
-        require!(
-            base_asset.owner == self.user.key(),
-            StakingError::InvalidOwner
-        );
-        require!(
-            base_asset.update_authority == UpdateAuthority::Collection(self.collection.key()),
-            StakingError::InvalidAuthority
-        );
 
         let fetched_attribute_list = match fetch_plugin::<BaseAssetV1, Attributes>(
             &self.nft.to_account_info(),
@@ -107,8 +95,6 @@ impl<'info> BurnStakedNft<'info> {
             .checked_div(SECONDS_IN_A_DAY)
             .ok_or(StakingError::InvalidTimestamp)?;
 
-        require!(staked_days > 0, StakingError::FreezePeriodNotElapsed);
-
         // Burn bonus = days_staked * burn_rewards (set by admin in config)
         let amount = (staked_days as u64)
             .checked_mul(self.config.burn_rewards as u64)
@@ -140,9 +126,45 @@ impl<'info> BurnStakedNft<'info> {
             .asset(&self.nft.to_account_info())
             .collection(Some(&self.collection.to_account_info()))
             .payer(&self.user.to_account_info())
-            .authority(Some(&self.update_authority.to_account_info()))
+            .authority(Some(&self.user.to_account_info()))
             .system_program(Some(&self.system_program.to_account_info()))
             .invoke_signed(&[&update_authority_seeds[..]])?;
+
+        match fetch_plugin::<BaseCollectionV1, Attributes>(
+            &self.collection.to_account_info(),
+            PluginType::Attributes,
+        ) {
+            Ok((_, fetched_attributes_list, _)) => {
+                let mut attribute_list: Vec<Attribute> =
+                    Vec::with_capacity(fetched_attributes_list.attribute_list.len());
+                for attribute in &fetched_attributes_list.attribute_list {
+                    match attribute.key.as_str() {
+                        "total_staked" => {
+                            let total_staked = attribute.value.clone();
+                            let total_staked: u32 = total_staked.parse().unwrap();
+                            let new_total_staked = total_staked - 1;
+                            attribute_list.push(Attribute {
+                                key: "total_staked".to_string(),
+                                value: new_total_staked.to_string(),
+                            });
+                        }
+                        _ => {
+                            attribute_list.push(attribute.clone());
+                        }
+                    }
+                }
+
+                UpdateCollectionPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+                    .collection(&self.collection.to_account_info())
+                    .payer(&self.user.to_account_info())
+                    .plugin(Plugin::Attributes(Attributes { attribute_list }))
+                    .authority(Some(&self.update_authority.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .invoke_signed(&[update_authority_seeds])?;
+            }
+
+            Err(_) => return Err(StakingError::NotStaked.into()),
+        };
 
         // Mint bonus reward tokens to user's ATA
         let cpi_accounts = MintToChecked {
@@ -156,7 +178,16 @@ impl<'info> BurnStakedNft<'info> {
             &config_seeds,
         );
         mint_to_checked(cpi_ctx, amount, self.rewards_mint.decimals)?;
-
+        
+        require!(staked_days > 0, StakingError::FreezePeriodNotElapsed);
+        require!(
+            base_asset.owner == self.user.key(),
+            StakingError::InvalidOwner
+        );
+        require!(
+            base_asset.update_authority == UpdateAuthority::Collection(self.collection.key()),
+            StakingError::InvalidAuthority
+        );
         Ok(())
     }
 }

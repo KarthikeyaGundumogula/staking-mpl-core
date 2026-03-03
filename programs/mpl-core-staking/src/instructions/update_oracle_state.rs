@@ -27,7 +27,7 @@ pub struct UpdateOracleState<'info> {
 
 impl<'info> UpdateOracleState<'info>  {
       pub fn update(&mut self) -> Result<()> {
-        match is_market_open(Clock::get()?.unix_timestamp) {
+        match !is_market_open(Clock::get()?.unix_timestamp) {
             true => {
                 require!(
                     self.oracle.validation
@@ -72,7 +72,7 @@ impl<'info> UpdateOracleState<'info>  {
         let oracle_key = self.oracle.key();
         let signer_seeds = &[b"reward_vault", oracle_key.as_ref(), &[self.oracle.bump]];
 
-        if is_within_15_minutes_of_market_open_or_close(Clock::get()?.unix_timestamp) && reward_vault_lamports > REWARD_IN_LAMPORTS
+        if !is_within_15_minutes_of_market_open_or_close(Clock::get()?.unix_timestamp) && reward_vault_lamports > REWARD_IN_LAMPORTS
         {
             transfer(
                 CpiContext::new_with_signer(

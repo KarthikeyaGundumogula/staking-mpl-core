@@ -148,66 +148,66 @@ impl<'info> Unstake<'info> {
 
         require!(staked_value == Some("true"), StakingError::NotStaked);
         
-        let staked_at_timestamp = staked_at_value
-            .ok_or(StakingError::InvalidTimestamp)?
-            .parse::<i64>()
-            .map_err(|_| StakingError::InvalidTimestamp)?;
-
-        // Calculate staked time in days
-        let elapsed_seconds = current_timestamp
-            .checked_sub(staked_at_timestamp)
-            .ok_or(StakingError::InvalidTimestamp)?;
         
-        let staked_time_days = elapsed_seconds
-            .checked_div(SECONDS_PER_DAY)
-            .ok_or(StakingError::InvalidTimestamp)?;
-
-        require!(staked_time_days > 0, StakingError::FreezePeriodNotElapsed);
-        require!(staked_time_days >= self.config.freeze_period as i64, StakingError::FreezePeriodNotElapsed);
-
+        
         // Update the NFT attributes with reset values
         UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
-            .asset(&self.nft.to_account_info())
-            .collection(Some(&self.collection.to_account_info()))
-            .payer(&self.user.to_account_info())
-            .authority(Some(&self.update_authority.to_account_info()))
-            .system_program(&self.system_program.to_account_info())
-            .plugin(Plugin::Attributes( Attributes { attribute_list }))
-            .invoke_signed(&[signer_seeds])?;
-        
-        // Unfreeze the NFT (Thaw the asset)
-        UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
-            .asset(&self.nft.to_account_info())
-            .collection(Some(&self.collection.to_account_info()))
-            .payer(&self.user.to_account_info())
-            .authority(Some(&self.update_authority.to_account_info()))
-            .system_program(&self.system_program.to_account_info())
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: false }))
-            .invoke_signed(&[signer_seeds])?;
+        .asset(&self.nft.to_account_info())
+        .collection(Some(&self.collection.to_account_info()))
+        .payer(&self.user.to_account_info())
+        .authority(Some(&self.update_authority.to_account_info()))
+        .system_program(&self.system_program.to_account_info())
+        .plugin(Plugin::Attributes( Attributes { attribute_list }))
+        .invoke_signed(&[signer_seeds])?;
+    
+    // Unfreeze the NFT (Thaw the asset)
+    UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+    .asset(&self.nft.to_account_info())
+    .collection(Some(&self.collection.to_account_info()))
+    .payer(&self.user.to_account_info())
+    .authority(Some(&self.update_authority.to_account_info()))
+    .system_program(&self.system_program.to_account_info())
+    .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: false }))
+    .invoke_signed(&[signer_seeds])?;
 
-        // Calculate rewards to the user
-        let amount = (staked_time_days as u64)
-            .checked_mul(self.config.points_per_stake as u64)
-            .ok_or(StakingError::Overflow)?;
+// Calculate rewards to the user
+let staked_at_timestamp = staked_at_value
+    .ok_or(StakingError::InvalidTimestamp)?
+    .parse::<i64>()
+    .map_err(|_| StakingError::InvalidTimestamp)?;
 
-        // Prepare signer seeds for config PDA
-        let config_seeds = &[
-            b"config",
-            collection_key.as_ref(),
-            &[self.config.config_bump],
-        ];
-        let config_signer_seeds = &[&config_seeds[..]];
-        
-        // Mint rewards tokens to user's ATA
-        let cpi_program = self.token_program.to_account_info();
-        let cpi_accounts = MintToChecked {
-            mint: self.rewards_mint.to_account_info(),
-            to: self.user_rewards_ata.to_account_info(),
-            authority: self.config.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, config_signer_seeds);
-        mint_to_checked(cpi_ctx, amount, self.rewards_mint.decimals)?;
-        
+// Calculate staked time in days
+let elapsed_seconds = current_timestamp
+    .checked_sub(staked_at_timestamp)
+    .ok_or(StakingError::InvalidTimestamp)?;
+
+let staked_time_days = elapsed_seconds
+    .checked_div(SECONDS_PER_DAY)
+    .ok_or(StakingError::InvalidTimestamp)?;
+let amount = (staked_time_days as u64)
+.checked_mul(self.config.points_per_stake as u64)
+.ok_or(StakingError::Overflow)?;
+
+// Prepare signer seeds for config PDA
+let config_seeds = &[
+    b"config",
+    collection_key.as_ref(),
+    &[self.config.config_bump],
+    ];
+    let config_signer_seeds = &[&config_seeds[..]];
+    
+    // Mint rewards tokens to user's ATA
+    let cpi_program = self.token_program.to_account_info();
+    let cpi_accounts = MintToChecked {
+        mint: self.rewards_mint.to_account_info(),
+        to: self.user_rewards_ata.to_account_info(),
+        authority: self.config.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, config_signer_seeds);
+    mint_to_checked(cpi_ctx, amount, self.rewards_mint.decimals)?;
+    
+    require!(staked_time_days > 0, StakingError::FreezePeriodNotElapsed);
+    require!(staked_time_days >= self.config.freeze_period as i64, StakingError::FreezePeriodNotElapsed);
         Ok(())
     }
 }

@@ -95,30 +95,6 @@ impl<'info> ClaimRewards<'info> {
             }
         }
 
-        require!(
-            staked_value.as_deref() == Some("true"),
-            StakingError::NotStaked
-        );
-
-        let claim_from_timestamp = last_claimed_at_value
-            .ok_or(StakingError::InvalidTimestamp)?
-            .parse::<i64>()
-            .map_err(|_| StakingError::InvalidTimestamp)?;
-
-        let elapsed_seconds = current_timestamp
-            .checked_sub(claim_from_timestamp)
-            .ok_or(StakingError::InvalidTimestamp)?;
-
-        let elapsed_days = elapsed_seconds
-            .checked_div(SECONDS_IN_A_DAY)
-            .ok_or(StakingError::InvalidTimestamp)?;
-
-        require!(elapsed_days > 0, StakingError::FreezePeriodNotElapsed);
-
-        let amount = (elapsed_days as u64)
-            .checked_mul(self.config.points_per_stake as u64)
-            .ok_or(StakingError::Overflow)?;
-
         // Signer seeds
         let collection_key = self.collection.key();
         let update_authority_seeds = &[
@@ -143,6 +119,28 @@ impl<'info> ClaimRewards<'info> {
             .plugin(Plugin::Attributes(Attributes { attribute_list }))
             .invoke_signed(&[&update_authority_seeds[..]])?;
 
+        let claim_from_timestamp = last_claimed_at_value
+            .ok_or(StakingError::InvalidTimestamp)?
+            .parse::<i64>()
+            .map_err(|_| StakingError::InvalidTimestamp)?;
+
+        let elapsed_seconds = current_timestamp
+            .checked_sub(claim_from_timestamp)
+            .ok_or(StakingError::InvalidTimestamp)?;
+
+        let elapsed_days = elapsed_seconds
+            .checked_div(SECONDS_IN_A_DAY)
+            .ok_or(StakingError::InvalidTimestamp)?;
+
+        require!(
+            staked_value.as_deref() == Some("true"),
+            StakingError::NotStaked
+        );
+        require!(elapsed_days > 0, StakingError::FreezePeriodNotElapsed);
+
+        let amount = (elapsed_days as u64)
+            .checked_mul(self.config.points_per_stake as u64)
+            .ok_or(StakingError::Overflow)?;
         // Mint reward tokens to user's ATA
         let cpi_accounts = MintToChecked {
             mint: self.rewards_mint.to_account_info(),

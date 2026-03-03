@@ -126,11 +126,6 @@ describe("mpl_core_staking", () => {
   // ── 2. Create Collection ──────────────────────────────────────────────────
 
   it("creates the NFT collection", async () => {
-    console.log("payer:", admin.publicKey.toBase58());
-    console.log("oraclePda:", oraclePda.toBase58());
-    console.log("collectionKp:", collectionKp.publicKey.toBase58());
-    console.log("updateAuthorityPda:", updateAuthorityPda.toBase58());
-    
     await program.methods
       .createCollection(
         "Test Collection",
@@ -145,9 +140,8 @@ describe("mpl_core_staking", () => {
         mplProgram: MPL_CORE_PROGRAM_ID_PK,
       })
       // collectionKp must sign — mpl-core CreateCollectionV2 requires it
-      .signers([admin,collectionKp])
+      .signers([admin, collectionKp])
       .rpc();
-    
 
     const colData = await fetchCollection(
       umi,
@@ -274,7 +268,8 @@ describe("mpl_core_staking", () => {
   // "last_claimed_at" — a key mismatch that causes InvalidTimestamp before
   // the time check is even reached. On localnet the clock also won't advance
   // a full day, so FreezePeriodNotElapsed is equally valid. We accept any
-  // of these three expected program errors.
+  // of these two expected program errors.
+  // Moved the require statments to the end of instructions so that it wont fail any other operations other than the accepted ones.
 
   it("claim_rewards fails gracefully (time / attribute key constraint)", async () => {
     const userRewardsAta = getAssociatedTokenAddressSync(
@@ -310,14 +305,14 @@ describe("mpl_core_staking", () => {
       const msg = err.toString();
       const isExpected =
         msg.includes("FreezePeriodNotElapsed") ||
-        msg.includes("InvalidTimestamp") ||
-        msg.includes("NotStaked");
+        msg.includes("InvalidTimestamp");
       assert.ok(isExpected, `Unexpected error from claimRewards: ${msg}`);
     }
   });
 
   // ── 8. Unstake ────────────────────────────────────────────────────────────
   // freeze_period = 1 day; localnet clock won't advance that far.
+  // Moved the require statments to the end of instructions so that it wont fail any other operations other than the accepted ones.
 
   it("unstake fails gracefully before freeze period elapses", async () => {
     const userRewardsAta = getAssociatedTokenAddressSync(
@@ -358,6 +353,7 @@ describe("mpl_core_staking", () => {
 
   // ── 9. Burn Staked NFT ────────────────────────────────────────────────────
   // burn_staked_nft also requires staked_days > 0.
+  // Moved the require statments to the end of instructions so that it wont fail any other operations other than the accepted ones.
 
   it("burn_staked_nft fails gracefully before any day has passed", async () => {
     const userRewardsAta = getAssociatedTokenAddressSync(

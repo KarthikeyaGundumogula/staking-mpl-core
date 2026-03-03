@@ -32,6 +32,7 @@ impl<'info> CreateOracle<'info>{
         // initialize Oracle data
         match is_market_open(Clock::get()?.unix_timestamp) {
             true => {
+                msg!("oracle opened at market hours");
                 self.oracle.set_inner(Oracle {
                     validation: OracleValidation::V1 {
                         transfer: ExternalValidationResult::Approved,
