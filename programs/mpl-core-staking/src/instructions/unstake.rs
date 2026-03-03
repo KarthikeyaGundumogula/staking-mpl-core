@@ -4,7 +4,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
     accounts::{BaseAssetV1, BaseCollectionV1}, 
     fetch_plugin, 
-    instructions::UpdatePluginV1CpiBuilder,
+    instructions::{UpdateCollectionPluginV1CpiBuilder, UpdatePluginV1CpiBuilder},
     types::{Attribute, Attributes, FreezeDelegate, Plugin, PluginType, UpdateAuthority}
 };
 use crate::state::Config;
@@ -63,7 +63,7 @@ impl<'info> Unstake<'info> {
         require!(base_asset.update_authority == UpdateAuthority::Collection(self.collection.key()), StakingError::InvalidAuthority);
         let base_collection = BaseCollectionV1::try_from(&self.collection.to_account_info())?;
         require!(base_collection.update_authority == self.update_authority.key(), StakingError::InvalidAuthority);
-
+        
         // Signer seeds for the update authority
         let collection_key = self.collection.key();
         let signer_seeds = &[
@@ -71,6 +71,42 @@ impl<'info> Unstake<'info> {
             collection_key.as_ref(),
             &[bumps.update_authority],
         ];
+
+         match fetch_plugin::<BaseCollectionV1, Attributes>(
+            &self.collection.to_account_info(),
+            PluginType::Attributes,
+        ) {
+            Ok((_, fetched_attributes_list, _)) => {
+                let mut attribute_list: Vec<Attribute> =
+                    Vec::with_capacity(fetched_attributes_list.attribute_list.len());
+                for attribute in &fetched_attributes_list.attribute_list {
+                    match attribute.key.as_str() {
+                        "total_staked" => {
+                            let total_staked = attribute.value.clone();
+                            let total_staked: u32 = total_staked.parse().unwrap();
+                            let new_total_staked = total_staked - 1;
+                            attribute_list.push(Attribute {
+                                key: "total_staked".to_string(),
+                                value: new_total_staked.to_string(),
+                            });
+                        }
+                        _ => {
+                            attribute_list.push(attribute.clone());
+                        }
+                    }
+                }
+
+                UpdateCollectionPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+                    .collection(&self.collection.to_account_info())
+                    .payer(&self.user.to_account_info())
+                    .plugin(Plugin::Attributes(Attributes { attribute_list }))
+                    .authority(Some(&self.update_authority.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .invoke_signed(&[signer_seeds])?;
+            }
+
+            Err(_) => return Err(StakingError::NotStaked.into()),
+        };
 
         // Get current timestamp
         let current_timestamp = Clock::get()?.unix_timestamp;

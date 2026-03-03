@@ -141,6 +141,7 @@ impl<'info> Stake<'info> {
                 let mut attribute_list: Vec<Attribute> = Vec::new();
                 let mut staked = false;
                 let mut staked_at = false;
+                let mut last_claim = false;
                 for attribute in fetched_attribute_list.attribute_list {
                     if attribute.key == "staked" {
                         require!(attribute.value == "false", StakingError::AlreadyStaked);
@@ -155,6 +156,12 @@ impl<'info> Stake<'info> {
                             value: current_time.to_string(),
                         });
                         staked_at = true;
+                    } else if attribute.key == "last_claim_time" {
+                        attribute_list.push(Attribute {
+                            key: "last_claim_time".to_string(),
+                            value: current_time.to_string(),
+                        });
+                        last_claim = true;
                     } else {
                         attribute_list.push(attribute);
                     }
@@ -169,6 +176,13 @@ impl<'info> Stake<'info> {
                 if !staked_at {
                     attribute_list.push(Attribute {
                         key: "staked_at".to_string(),
+                        value: current_time.to_string(),
+                    });
+                }
+
+                if !last_claim {
+                    attribute_list.push(Attribute {
+                        key: "last_claim_time".to_string(),
                         value: current_time.to_string(),
                     });
                 }
