@@ -23,7 +23,7 @@ pub struct CreateCollection<'info> {
     pub oracle: Account<'info, OracleAccount>,
     /// CHECK: Collection account will be checked by the mpl core program
     #[account(mut)]
-    pub collection: UncheckedAccount<'info>,
+    pub collection: Signer<'info>,
     /// CHECK: PDA update authority
     #[account(
     seeds= [b"update_authority",collection.key().as_ref()],
@@ -64,10 +64,6 @@ impl<'info> CreateCollection<'info> {
                 plugin: Plugin::Attributes(Attributes {
                     attribute_list: vec![
                         Attribute {
-                            key: "rewards_deposited".to_string(),
-                            value: "0".to_string(),
-                        },
-                        Attribute {
                             key: "total_staked".to_string(),
                             value: "0".to_string(),
                         },
@@ -78,7 +74,7 @@ impl<'info> CreateCollection<'info> {
             .external_plugin_adapters(vec![ExternalPluginAdapterInitInfo::Oracle(
                 OracleInitInfo {
                     base_address: self.oracle.key(),
-                    init_plugin_authority: None,
+                    init_plugin_authority: Some(PluginAuthority::UpdateAuthority),
                     lifecycle_checks: vec![(
                         HookableLifecycleEvent::Transfer,
                         ExternalCheckResult { flags: 4 },

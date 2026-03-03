@@ -8,8 +8,9 @@ skip-lint = false
 [programs.localnet]
 mpl_core_staking = "DsQFzrNNWqcpdZqNcQJjt7anpTBeBfmR3tW8JwpLWzAD"
 
-[[test.validator.clone]]
+[[test.genesis]]
 address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+program = "tests/mpl_core.so"
 
 [registry]
 url = "https://api.apr.dev"

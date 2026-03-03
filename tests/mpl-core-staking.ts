@@ -43,7 +43,7 @@ describe("mpl_core_staking", () => {
 
   const program = anchor.workspace.MplCoreStaking as Program<MplCoreStaking>;
   const connection = provider.connection;
-  const umi = createUmi(connection.rpcEndpoint);
+  const umi = createUmi(connection);
 
   // Key actors
   const admin = Keypair.generate();
@@ -96,7 +96,7 @@ describe("mpl_core_staking", () => {
 
   // ── 1. Create Oracle Account ──────────────────────────────────────────────
 
-  it.only("creates the oracle account", async () => {
+  it("creates the oracle account", async () => {
     await program.methods
       .createOracleAcc()
       .accountsStrict({
@@ -125,7 +125,7 @@ describe("mpl_core_staking", () => {
 
   // ── 2. Create Collection ──────────────────────────────────────────────────
 
-  it.only("creates the NFT collection", async () => {
+  it("creates the NFT collection", async () => {
     console.log("payer:", admin.publicKey.toBase58());
     console.log("oraclePda:", oraclePda.toBase58());
     console.log("collectionKp:", collectionKp.publicKey.toBase58());
@@ -145,7 +145,7 @@ describe("mpl_core_staking", () => {
         mplProgram: MPL_CORE_PROGRAM_ID_PK,
       })
       // collectionKp must sign — mpl-core CreateCollectionV2 requires it
-      .signers([admin])
+      .signers([admin,collectionKp])
       .rpc();
     
 

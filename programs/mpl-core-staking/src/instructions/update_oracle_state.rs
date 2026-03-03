@@ -1,7 +1,6 @@
 use anchor_lang::{prelude::*, system_program::{Transfer, transfer}};
-use mpl_core::types::{ExternalValidationResult, OracleValidation};
 
-use crate::{constants::REWARD_IN_LAMPORTS, errors::StakingError, helpers::{is_market_open, is_within_15_minutes_of_market_open_or_close}, state::Oracle};
+use crate::{constants::REWARD_IN_LAMPORTS, errors::StakingError, helpers::{is_market_open, is_within_15_minutes_of_market_open_or_close}, state::{ExternalValidationResult, Oracle, OracleValidation}};
 
 #[derive(Accounts)]
 pub struct UpdateOracleState<'info> {
@@ -30,7 +29,17 @@ impl<'info> UpdateOracleState<'info>  {
       pub fn update(&mut self) -> Result<()> {
         match is_market_open(Clock::get()?.unix_timestamp) {
             true => {
-                require!(self.oracle.validation == OracleValidation::V1 {transfer: ExternalValidationResult::Rejected, create: ExternalValidationResult::Pass, burn: ExternalValidationResult::Pass, update: ExternalValidationResult::Pass }, StakingError::AlreadyUpdated);
+                require!(
+                    self.oracle.validation
+                        == OracleValidation::V1 {
+                            transfer: ExternalValidationResult::Rejected,
+                            create: ExternalValidationResult::Pass,
+                            burn: ExternalValidationResult::Pass,
+                            update: ExternalValidationResult::Pass
+                        },
+                    StakingError::AlreadyUpdated
+                );
+
                 self.oracle.validation = OracleValidation::V1 {
                     transfer: ExternalValidationResult::Approved,
                     create: ExternalValidationResult::Pass,
@@ -39,7 +48,17 @@ impl<'info> UpdateOracleState<'info>  {
                 };
             }
             false => {
-                require!(self.oracle.validation == OracleValidation::V1 { transfer: ExternalValidationResult::Approved, create: ExternalValidationResult::Pass, burn: ExternalValidationResult::Pass, update: ExternalValidationResult::Pass }, StakingError::AlreadyUpdated);
+                require!(
+                    self.oracle.validation
+                        == OracleValidation::V1 {
+                            transfer: ExternalValidationResult::Approved,
+                            create: ExternalValidationResult::Pass,
+                            burn: ExternalValidationResult::Pass,
+                            update: ExternalValidationResult::Pass
+                        },
+                    StakingError::AlreadyUpdated
+                );
+
                 self.oracle.validation = OracleValidation::V1 {
                     transfer: ExternalValidationResult::Rejected,
                     create: ExternalValidationResult::Pass,
@@ -50,26 +69,22 @@ impl<'info> UpdateOracleState<'info>  {
         }
 
         let reward_vault_lamports = self.reward_vault.lamports();
-        let oracle_key = self.oracle.key().clone();
+        let oracle_key = self.oracle.key();
         let signer_seeds = &[b"reward_vault", oracle_key.as_ref(), &[self.oracle.bump]];
-        match is_within_15_minutes_of_market_open_or_close(Clock::get()?.unix_timestamp) && reward_vault_lamports > REWARD_IN_LAMPORTS {
-            true => {
-                // Reward cranker for updating Oracle within 15 minutes of market open or close
-                transfer(
-                    CpiContext::new_with_signer(
-                        self.system_program.to_account_info(), 
-                        Transfer {
-                            from: self.reward_vault.to_account_info(),
-                            to: self.signer.to_account_info(),
-                        }, 
-                        &[signer_seeds]
-                    ),
-                    REWARD_IN_LAMPORTS
-                )?
-            }
-            false => {
-                // Do nothing
-            }
+
+        if is_within_15_minutes_of_market_open_or_close(Clock::get()?.unix_timestamp) && reward_vault_lamports > REWARD_IN_LAMPORTS
+        {
+            transfer(
+                CpiContext::new_with_signer(
+                    self.system_program.to_account_info(),
+                    Transfer {
+                        from: self.reward_vault.to_account_info(),
+                        to: self.payer.to_account_info(),
+                    },
+                    &[signer_seeds],
+                ),
+                REWARD_IN_LAMPORTS,
+            )?
         }
         Ok(())
     }
