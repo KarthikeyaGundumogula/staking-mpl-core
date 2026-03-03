@@ -11,9 +11,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
 };
 
-use crate::{errors::StakingError, state::Config};
-
-const SECONDS_PER_DAY: i64 = 86400;
+use crate::{constants::SECONDS_IN_A_DAY, errors::StakingError, state::Config};
 
 #[derive(Accounts)]
 pub struct BurnStakedNft<'info> {
@@ -71,7 +69,6 @@ impl<'info> BurnStakedNft<'info> {
             StakingError::InvalidAuthority
         );
 
-
         let fetched_attribute_list = match fetch_plugin::<BaseAssetV1, Attributes>(
             &self.nft.to_account_info(),
             PluginType::Attributes,
@@ -107,7 +104,7 @@ impl<'info> BurnStakedNft<'info> {
             .ok_or(StakingError::InvalidTimestamp)?;
 
         let staked_days = elapsed_seconds
-            .checked_div(SECONDS_PER_DAY)
+            .checked_div(SECONDS_IN_A_DAY)
             .ok_or(StakingError::InvalidTimestamp)?;
 
         require!(staked_days > 0, StakingError::FreezePeriodNotElapsed);

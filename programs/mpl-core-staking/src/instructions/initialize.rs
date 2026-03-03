@@ -10,6 +10,7 @@ pub struct InitConfig<'info> {
     pub admin: Signer<'info>,
     /// CHECK: Validated by the mpl core
     pub collection: UncheckedAccount<'info>,
+    /// CHECK: PDA derivation validated by runtime 
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
         bump

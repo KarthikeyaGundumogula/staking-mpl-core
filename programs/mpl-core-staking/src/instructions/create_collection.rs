@@ -11,14 +11,14 @@ pub struct CreateCollection<'info> {
     pub payer: Signer<'info>,
     #[account(mut)]
     pub collection: Signer<'info>,
-    // CHECK: PDA update authority
+    /// CHECK: PDA update authority
     #[account(
     seeds= [b"update_authority",collection.key().as_ref()],
     bump
     )]
     pub update_authority: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
-    // CHECK: MPL CORE ID
+    /// CHECK: MPL CORE ID
     #[account(
       address = MPL_CORE_ID
     )]

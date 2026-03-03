@@ -5,6 +5,8 @@ pub mod stake;
 pub mod unstake;
 pub mod claim_rewards;
 pub mod burn_staked_nft;
+pub mod create_oracle_account;
+pub mod update_oracle_state;
 
 pub use create_collection::*;
 pub use initialize::*;
@@ -13,3 +15,5 @@ pub use stake::*;
 pub use unstake::*;
 pub use claim_rewards::*;
 pub use burn_staked_nft::*;
+pub use create_oracle_account::*;
+pub use update_oracle_state::*;

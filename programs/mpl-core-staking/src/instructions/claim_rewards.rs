@@ -11,9 +11,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
 };
 
-use crate::{errors::StakingError, state::Config};
-
-const SECONDS_PER_DAY: i64 = 86400;
+use crate::{constants::SECONDS_IN_A_DAY, errors::StakingError, state::Config};
 
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
@@ -112,7 +110,7 @@ impl<'info> ClaimRewards<'info> {
             .ok_or(StakingError::InvalidTimestamp)?;
 
         let elapsed_days = elapsed_seconds
-            .checked_div(SECONDS_PER_DAY)
+            .checked_div(SECONDS_IN_A_DAY)
             .ok_or(StakingError::InvalidTimestamp)?;
 
         require!(elapsed_days > 0, StakingError::FreezePeriodNotElapsed);

@@ -1,8 +1,11 @@
 use anchor_lang::prelude::*;
 
+mod constants;
 mod errors;
+mod helpers;
 mod instructions;
 mod state;
+
 use instructions::*;
 
 declare_id!("DsQFzrNNWqcpdZqNcQJjt7anpTBeBfmR3tW8JwpLWzAD");
@@ -17,6 +20,14 @@ pub mod mpl_core_staking {
         uri: String,
     ) -> Result<()> {
         ctx.accounts.create_collection(name, uri, ctx.bumps)
+    }
+
+    pub fn create_oracle_acc(ctx: Context<CreateOracle>) -> Result<()> {
+        ctx.accounts.create(ctx.bumps)
+    }
+
+    pub fn update_oracle_state(ctx: Context<UpdateOracleState>) -> Result<()> {
+        ctx.accounts.update()
     }
 
     pub fn init_config(
@@ -37,7 +48,7 @@ pub mod mpl_core_staking {
         ctx.accounts.stake(&ctx.bumps)
     }
 
-    pub fn burn_staked_nft(ctx:Context<BurnStakedNft>) -> Result<()> {
+    pub fn burn_staked_nft(ctx: Context<BurnStakedNft>) -> Result<()> {
         ctx.accounts.burn_staked_nft(ctx.bumps)
     }
 

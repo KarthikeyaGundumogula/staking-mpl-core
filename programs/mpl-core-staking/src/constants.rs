@@ -1,0 +1,8 @@
+// Constants
+pub const SECONDS_IN_AN_HOUR: i64 = 3600;
+pub const SECONDS_IN_A_MINUTE: i64 = 60;
+pub const SECONDS_IN_A_DAY: i64 = 86400;
+pub const MARKET_OPEN_TIME: i64 = 14 * SECONDS_IN_AN_HOUR + 30 * SECONDS_IN_A_MINUTE; // 14:30 UTC == 9:30 EST
+pub const MARKET_CLOSE_TIME: i64 = 21 * SECONDS_IN_AN_HOUR; // 21:00 UTC == 16:00 EST
+pub const MARKET_OPEN_CLOSE_MARGIN: i64 = 15 * SECONDS_IN_A_MINUTE; // 15 minutes in seconds
+pub const REWARD_IN_LAMPORTS: u64 = 10000000; // 0.001 SOL
